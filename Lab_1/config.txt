@@ -1,0 +1,2 @@
+/home/Desktop/Lab1/firt_folder
+/home/Desktop/Lab1/second_folder
