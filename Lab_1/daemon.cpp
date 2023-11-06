@@ -3,36 +3,39 @@
 #include <fstream>
 #include <chrono>
 #include <cstdlib>
-#include <unistd.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <csignal>
-#include <ctime>
 #include <thread>
 #include <sys/prctl.h>
 #include <syslog.h>
 #include <filesystem>
-#include <vector>
 #include <variant>
-
-
-
-
+#include <fcntl.h>
 
 
 
 Daemon::Daemon() {
     data = {};
     pid_t pid = fork();
-    if (pid == 0) { prctl(PR_SET_NAME, "dmn1", 0, 0, 0);
+    if (pid < 0) {exit(1);}  
+    else if (pid > 0) {exit(0);} 
+    else {  
+        prctl(PR_SET_NAME, "dmn1", 0, 0, 0);
+
         umask(0);
-        
+        setsid(); 
+
+        if (chdir("/") < 0) {exit(1);}
+
         close(STDIN_FILENO);
         close(STDOUT_FILENO);
-        close(STDERR_FILENO);
+        close(STDERR_FILENO); 
 
-        setsid();  } 
-    else {exit(0)}
+        open("/dev/null", O_RDONLY);
+        open("/dev/null", O_WRONLY);
+        open("/dev/null", O_WRONLY);
+    }
 }
 
 
@@ -47,7 +50,7 @@ void Daemon::daemon_start() {
         syslog(LOG_INFO, "ERROR IN KILLING PROCESS. EXIT.");
         return;
     }
-    if (!write_pid(std::to_string(getpid()))) {
+    if (!write_pid(static_cast<int>(getpid()))) {
         syslog(LOG_INFO, "ERROR WITH PID FILE. EXIT.");
         return;
     }
@@ -61,21 +64,33 @@ void Daemon::daemon_start() {
     openlog(process_name.c_str(), LOG_PID, LOG_DAEMON);
     syslog(LOG_INFO, "DAEMON STARTED");
 
+    struct sigaction sa_term;
+    sa_term.sa_handler = sigterm_handler;
+    sigaction(SIGTERM, &sa_term, nullptr);
+
+    struct sigaction sa_hup;
+    sa_hup.sa_handler = sighup_handler;
+    sigaction(SIGHUP, &sa_hup, nullptr);
+
+
+
     while (is_it_time_to_finish == 0) { 
         
-        copy_files()
-        signal(SIGHUP, sighup_handler);  // reread config
-        signal(SIGTERM, sigterm_handler);  // kill daemon
+        copy_files(data[0], data[1]);
 
-        std::this_thread::sleep_for(std::chrono::seconds(30));
+
+        my_sleep();
     }
-    closelog();
+
     syslog(LOG_INFO, "DAEMON KILLED");
+    closelog();
+
 }
 
 
 bool Daemon::read_config() {
-    std::string filename = "config.txt";
+
+    std::string filename = "/home/vboxuser/Desktop/Lab1/config.txt";
     std::ifstream file(filename);
 
     if (file.is_open()) {
@@ -88,15 +103,16 @@ bool Daemon::read_config() {
             data = config_data;
             return true;
         }
-    else {return false;}
+    return false;
 }
 
 
-double Daemon::read_pid() {
-    std::string filename = "pid.txt";
+int Daemon::read_pid() {
+    std::string filename = "/var/run/my_daemon.pid";
     std::ifstream file(filename);
 
        if (file.is_open()) {
+        syslog(LOG_INFO, "FILE HAS OPENED");
         std::string line;
         if (!std::getline(file, line)) {
             file.close();
@@ -105,23 +121,25 @@ double Daemon::read_pid() {
         file.close();
         return std::stod(line); 
     }
-    else {return 1;}
+    
+    syslog(LOG_INFO, "FILE HAS NOT OPENED");
+    return 1;
 
 }
 
 
-bool Daemon::write_pid(std::string out_pid) {
-    std::string filePath = "pid.txt";
-    std::ofstream outputFile(filePath, std::ios::trunc);  // clean file and then write
+bool Daemon::write_pid(int out_pid) {
+    std::string filename = "/var/run/my_daemon.pid";
+    std::ofstream outputFile(filename, std::ios::trunc);  // clean file and then write
 
     if (outputFile.is_open()) {
         outputFile << out_pid;
         outputFile.close();
         return true;
-    } else {
-        return false;
-    }
+    } 
+     return false;
 }
+
 
 
 int Daemon::get_file_age(std::string file_path) { 
@@ -170,6 +188,7 @@ bool Daemon::check_if_process_exists(pid_t pid) {
 }
 
 
+
 void Daemon::sighup_handler(int signal_number) {
     read_config();
 }
@@ -181,13 +200,29 @@ void Daemon::sigterm_handler(int signal_number) {
 
 
 bool Daemon::reset_new_process() {
-    double ex_pid = read_pid();
-    if (ex_pid == -2) {return 0;}
+    int ex_pid = read_pid();
+    syslog(LOG_INFO, "READ_PID");
+    std::cout << ex_pid << std::endl;
+    if (ex_pid == 2) {return false;}
     if (!check_if_process_exists(ex_pid)) {
-        return 1; 
+        syslog(LOG_INFO, "CHECK PROCESS EXISTS");
+        return true; 
     }
     int response = kill(ex_pid, SIGTERM);
-    if (response == 0) {return 1;}
-    else {return 0;}
+    if (response == false) {
+        syslog(LOG_INFO, "RESPONSE 0");
+        return true;}
+    else {
+        syslog(LOG_INFO, "all bad");
+        return false;}
 }
 
+void Daemon::my_sleep() {
+    const int max_iterations = 30;
+    int current_iteration = 0;
+
+    while (current_iteration < max_iterations && is_it_time_to_finish == 0) {
+        current_iteration++;
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+    }
+}
