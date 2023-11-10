@@ -18,7 +18,7 @@ private:
     static inline bool is_it_time_to_finish = 0;  // SIGTERM signal
     static inline bool is_it_time_to_read_config = 0;  // SIGHUP signal
     static inline std::string pid_file_path = "/var/run/my_daemon.pid";
-
+    static inline std::string config_file_path = "config.txt";
 
 
     Daemon();
@@ -29,6 +29,7 @@ private:
     static bool read_config();
     static int read_pid();
     static bool write_pid(int out_pid);
+    // static bool create_config();
 
     // main functionality
     void copy_files(const std::string& sourceDir,const std::string& destDir);

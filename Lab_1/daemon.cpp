@@ -17,6 +17,7 @@
 
 Daemon::Daemon() {
     data = {};
+    config_file_path = std::filesystem::absolute(config_file_path);
     pid_t pid = fork();
     if (pid < 0) {exit(1);}  
     else if (pid > 0) {exit(0);} 
@@ -87,12 +88,18 @@ void Daemon::daemon_start() {
 
 }
 
+// bool Daemon::create_config(){
+//     std::ifstream file(config_file_path);
+//      if (!file.is_open()){
+//         std::ofstream newFile(config_file_path.c_str());
+//         return true
+//     }
+//     return false
+// }
 
 bool Daemon::read_config() {
-
-    std::string filename = "/home/vboxuser/Desktop/Lab1/config.txt";
-    std::ifstream file(filename);
-
+    
+    std::ifstream file(config_file_path);        
     if (file.is_open()) {
             std::vector<std::string> config_data;
             std::string line;
@@ -108,8 +115,8 @@ bool Daemon::read_config() {
 
 
 int Daemon::read_pid() {
-    std::string filename = "/var/run/my_daemon.pid";
-    std::ifstream file(filename);
+  
+    std::ifstream file(pid_file_path);
 
        if (file.is_open()) {
         syslog(LOG_INFO, "FILE HAS OPENED");
@@ -129,8 +136,8 @@ int Daemon::read_pid() {
 
 
 bool Daemon::write_pid(int out_pid) {
-    std::string filename = "/var/run/my_daemon.pid";
-    std::ofstream outputFile(filename, std::ios::trunc);  // clean file and then write
+   
+    std::ofstream outputFile(pid_file_path, std::ios::trunc);  // clean file and then write
 
     if (outputFile.is_open()) {
         outputFile << out_pid;
