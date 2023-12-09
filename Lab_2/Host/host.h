@@ -4,7 +4,6 @@
 #include <map>
 #include <vector>
 #include <signal.h>
-#include <future>
 #include <bits/types/siginfo_t.h>
 
 class Host{

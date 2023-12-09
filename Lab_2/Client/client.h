@@ -2,7 +2,6 @@
 #include "../message_queue.h"
 #include "../message.h"
 #include <signal.h>
-#include <functional>
 #include <bits/types/siginfo_t.h>
 
 class Client{
