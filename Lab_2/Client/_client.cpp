@@ -26,6 +26,18 @@ Client& Client::getInstance(){
     return instance;
 }
 
+bool Client::getCinInputAvailavle(){
+  struct timeval tv;
+  fd_set fds;
+  tv.tv_sec = 1;
+  tv.tv_usec = 0;
+  FD_ZERO(&fds);
+  FD_SET(STDIN_FILENO, &fds);
+  int ret = select(STDIN_FILENO+1, &fds, NULL, NULL, &tv);
+  if(ret == 0 || ret == -1)
+    return false;
+  return (FD_ISSET(0, &fds));
+}
 
 void Client::signalHandler(int signal_id, siginfo_t* info, void* ptr){
     Client& client = getInstance();
@@ -68,12 +80,11 @@ int Client::start(){
         syslog(LOG_ERR, "Semaphore error");
         return endWork();
     }
-    std::future<Message> future = std::async(asyncOutput);
+ 
     while (isRunning){
         
-        if (future.wait_for(std::chrono::seconds(1)) == std::future_status::ready){
-            outputMsg = future.get();
-            future = std::async(asyncOutput);
+        if (getCinInputAvailavle()){
+            std::cin.getline(outputMsg.m_message, 256);
             messageEntered = true;
         } else {
             messageEntered = false;

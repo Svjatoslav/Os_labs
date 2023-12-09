@@ -25,7 +25,7 @@ private:
     static void signalHandler(int signal_id, siginfo_t* info, void* ptr);
     bool getMessage(pid_t pid, Message* msg);
     void sendMessage(pid_t pid, Message msg);
-    std::function<Message()> asyncOutput = []() -> Message{Message msg; std::cin.getline(msg.m_message, 256); return msg; };
+    bool getCinInputAvailavle();
     int endWork();
     
 public:

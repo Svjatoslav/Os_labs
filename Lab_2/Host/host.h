@@ -25,7 +25,7 @@ private:
     
     bool getMessage(pid_t pid, Message* msg);
     void sendMessage(pid_t pid, Message msg);
-    std::function<Message()> getCinInput = []() -> Message{Message msg; std::cin.getline(msg.m_message, 256); return msg; };
+    bool getCinInputAvailavle();
   
     static void signalHandler(int signal_id, siginfo_t* info, void *ptr);
     static void* connectionWork(void*  argv);
